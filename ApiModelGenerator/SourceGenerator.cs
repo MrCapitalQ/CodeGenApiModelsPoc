@@ -38,6 +38,9 @@ namespace ApiModelGenerator
             var propertiesSb = new StringBuilder();
             foreach (var property in properties)
             {
+                if (property.GetAttributes().Any(x => "PocAttributes.PostIgnoreAttribute".Equals(x.AttributeClass?.ToDisplayString(), StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
                 propertiesSb.AppendLine($$"""        public {{property.Type.Name}} {{property.Name}} { get; set; }""");
             }
 
