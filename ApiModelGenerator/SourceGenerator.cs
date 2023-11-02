@@ -20,40 +20,59 @@ namespace ApiModelGenerator
             return syntaxNode is ClassDeclarationSyntax or RecordDeclarationSyntax;
         }
 
-        private static INamedTypeSymbol Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
+        private static ClassInfo Transform(GeneratorAttributeSyntaxContext context, CancellationToken cancellationToken)
         {
-            return (INamedTypeSymbol)context.TargetSymbol;
+            var typeSymbol = (INamedTypeSymbol)context.TargetSymbol;
+
+            return new ClassInfo
+            {
+                Name = typeSymbol.Name,
+                Namespace = typeSymbol.ContainingNamespace.ToDisplayString(),
+                Properties = typeSymbol
+                    .GetMembers()
+                    .Where(s => s.Kind == SymbolKind.Property)
+                    .Cast<IPropertySymbol>()
+                    .Where(p => !p.GetAttributes().Any(x => "PocAttributes.PostIgnoreAttribute".Equals(x.AttributeClass?.ToDisplayString())))
+                    .Select(p => new ClassPropertyInfo
+                    {
+                        Name = p.Name,
+                        Type = p.Type.ToDisplayString()
+                    })
+                    .ToList()
+            };
         }
 
-        private static void Generate(SourceProductionContext context, INamedTypeSymbol typeSymbol)
+        private static void Generate(SourceProductionContext context, ClassInfo classInfo)
         {
-            var typeNamespace = typeSymbol.ContainingNamespace.ToDisplayString();
-
-            var properties = typeSymbol
-                .GetMembers()
-                .Where(s => s.Kind == SymbolKind.Property)
-                .Cast<IPropertySymbol>()
-                .ToList();
-
             var propertiesSb = new StringBuilder();
-            foreach (var property in properties)
+            foreach (var property in classInfo.Properties)
             {
-                if (property.GetAttributes().Any(x => "PocAttributes.PostIgnoreAttribute".Equals(x.AttributeClass?.ToDisplayString(), StringComparison.OrdinalIgnoreCase)))
-                    continue;
-
-                propertiesSb.AppendLine($$"""        public {{property.Type.Name}} {{property.Name}} { get; set; }""");
+                propertiesSb.AppendLine($$"""        public {{property.Type}} {{property.Name}} { get; set; }""");
             }
 
             var classTemplate = $$"""
-                namespace {{typeNamespace}}
+                namespace {{classInfo.Namespace}}
                 {
-                    public class {{typeSymbol.Name}}Post
+                    public class {{classInfo.Name}}Post
                     {
                 {{propertiesSb}}
                     }
                 }
                 """;
-            context.AddSource($"{typeSymbol.Name}_ApiModels.g.cs", classTemplate);
+            context.AddSource($"{classInfo.Name}_ApiModels.g.cs", classTemplate);
+        }
+
+        private record ClassInfo
+        {
+            public string Name { get; set; } = string.Empty;
+            public string Namespace { get; set; } = string.Empty;
+            public IEnumerable<ClassPropertyInfo> Properties { get; set; } = Enumerable.Empty<ClassPropertyInfo>();
+        }
+
+        private record ClassPropertyInfo
+        {
+            public string Name { get; set; } = string.Empty;
+            public string Type { get; set; } = string.Empty;
         }
     }
 }
