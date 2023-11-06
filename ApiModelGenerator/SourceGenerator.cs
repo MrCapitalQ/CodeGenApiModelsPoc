@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text;
+using System.Xml.Linq;
 
 namespace ApiModelGenerator
 {
@@ -36,7 +37,8 @@ namespace ApiModelGenerator
                     .Select(p => new ClassPropertyInfo
                     {
                         Name = p.Name,
-                        Type = p.Type.ToDisplayString()
+                        Type = p.Type.ToDisplayString(),
+                        Comments = p.GetDocumentationCommentXml(cancellationToken: cancellationToken)
                     })
                     .ToList()
             };
@@ -47,6 +49,19 @@ namespace ApiModelGenerator
             var propertiesSb = new StringBuilder();
             foreach (var property in classInfo.Properties)
             {
+                if (!string.IsNullOrEmpty(property.Comments))
+                {
+                    var comments = XElement.Parse(property.Comments);
+                    foreach (var node in comments.Descendants())
+                    {
+                        foreach (var line in $"    {node}".Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
+                        {
+                            propertiesSb.Append("        /// ");
+                            propertiesSb.AppendLine(string.Concat(line.Skip(4)));
+                        }
+                    }
+                }
+
                 propertiesSb.AppendLine($$"""        public {{property.Type}} {{property.Name}} { get; set; }""");
             }
 
@@ -73,6 +88,7 @@ namespace ApiModelGenerator
         {
             public string Name { get; set; } = string.Empty;
             public string Type { get; set; } = string.Empty;
+            public string? Comments { get; set; }
         }
     }
 }
