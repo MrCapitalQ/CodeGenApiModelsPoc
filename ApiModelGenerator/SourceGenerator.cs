@@ -52,14 +52,9 @@ namespace ApiModelGenerator
                 if (!string.IsNullOrEmpty(property.Comments))
                 {
                     var comments = XElement.Parse(property.Comments);
-                    foreach (var node in comments.Descendants())
-                    {
-                        foreach (var line in $"    {node}".Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
-                        {
-                            propertiesSb.Append("        /// ");
-                            propertiesSb.AppendLine(string.Concat(line.Skip(4)));
-                        }
-                    }
+                    var defaultSummary = comments.Descendants("summary").FirstOrDefault();
+                    var postSummary = comments.Descendants("post").FirstOrDefault();
+                    AppendSummaryComment(propertiesSb, postSummary ?? defaultSummary);
                 }
 
                 propertiesSb.AppendLine($$"""        public {{property.Type}} {{property.Name}} { get; set; }""");
@@ -75,6 +70,20 @@ namespace ApiModelGenerator
                 }
                 """;
             context.AddSource($"{classInfo.Name}_ApiModels.g.cs", classTemplate);
+        }
+
+        private static void AppendSummaryComment(StringBuilder sb, XElement? node)
+        {
+            if (node is null)
+                return;
+
+            sb.AppendLine("        /// <summary>");
+            foreach (var line in node.Value.TrimEnd().Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                sb.Append("        /// ");
+                sb.AppendLine(string.Concat(line.Skip(4)));
+            }
+            sb.AppendLine("        /// </summary>");
         }
 
         private record ClassInfo
