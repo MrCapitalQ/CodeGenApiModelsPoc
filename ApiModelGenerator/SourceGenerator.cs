@@ -1,7 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text;
-using System.Xml.Linq;
+using System.Xml;
 
 namespace ApiModelGenerator
 {
@@ -51,9 +51,10 @@ namespace ApiModelGenerator
             {
                 if (!string.IsNullOrEmpty(property.Comments))
                 {
-                    var comments = XElement.Parse(property.Comments);
-                    var defaultSummary = comments.Descendants("summary").FirstOrDefault();
-                    var postSummary = comments.Descendants("post").FirstOrDefault();
+                    var doc = new XmlDocument();
+                    doc.LoadXml(property.Comments);
+                    var defaultSummary = doc.GetElementsByTagName("summary").OfType<XmlNode>().FirstOrDefault();
+                    var postSummary = doc.GetElementsByTagName("post").OfType<XmlNode>().FirstOrDefault();
                     AppendSummaryComment(propertiesSb, postSummary ?? defaultSummary);
                 }
 
@@ -72,13 +73,13 @@ namespace ApiModelGenerator
             context.AddSource($"{classInfo.Name}_ApiModels.g.cs", classTemplate);
         }
 
-        private static void AppendSummaryComment(StringBuilder sb, XElement? node)
+        private static void AppendSummaryComment(StringBuilder sb, XmlNode? node)
         {
             if (node is null)
                 return;
 
             sb.AppendLine("        /// <summary>");
-            foreach (var line in node.Value.TrimEnd().Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries))
+            foreach (var line in node.InnerXml.TrimEnd().Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries))
             {
                 sb.Append("        /// ");
                 sb.AppendLine(string.Concat(line.Skip(4)));
