@@ -1,4 +1,5 @@
 ﻿using PocAttributes;
+using System.ComponentModel.DataAnnotations;
 
 namespace CodeGenApiModelsPoc.Models
 {
@@ -18,6 +19,8 @@ namespace CodeGenApiModelsPoc.Models
         /// <post>
         /// This is required for post.
         /// </post>
+        [Required]
+        [StringLength(100, MinimumLength = 2, ErrorMessage = "Whoops, doesn't fit.")]
         public string FirstName { get; set; } = string.Empty;
 
         /// <summary>

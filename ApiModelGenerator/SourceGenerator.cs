@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text;
 using System.Xml;
@@ -38,7 +39,8 @@ namespace ApiModelGenerator
                     {
                         Name = p.Name,
                         Type = p.Type.ToDisplayString(),
-                        Comments = p.GetDocumentationCommentXml(cancellationToken: cancellationToken)
+                        Comments = p.GetDocumentationCommentXml(cancellationToken: cancellationToken),
+                        Attributes = p.GetAttributes()
                     })
                     .ToList()
             };
@@ -56,6 +58,19 @@ namespace ApiModelGenerator
                     var defaultSummary = doc.GetElementsByTagName("summary").OfType<XmlNode>().FirstOrDefault();
                     var postSummary = doc.GetElementsByTagName("post").OfType<XmlNode>().FirstOrDefault();
                     AppendSummaryComment(propertiesSb, postSummary ?? defaultSummary);
+                }
+
+                foreach (var attribute in property.Attributes)
+                {
+                    propertiesSb.Append($"        [{attribute.AttributeClass?.ToDisplayString()}(");
+
+                    var arguments = attribute.ConstructorArguments
+                        .Select(x => x.ToCSharpString())
+                        .Concat(attribute.NamedArguments
+                            .Select(x => $"{x.Key} = {x.Value.ToCSharpString()}"));
+                    propertiesSb.Append(string.Join(", ", arguments));
+
+                    propertiesSb.AppendLine(")]");
                 }
 
                 propertiesSb.AppendLine($$"""        public {{property.Type}} {{property.Name}} { get; set; }""");
@@ -99,6 +114,7 @@ namespace ApiModelGenerator
             public string Name { get; set; } = string.Empty;
             public string Type { get; set; } = string.Empty;
             public string? Comments { get; set; }
+            public IEnumerable<AttributeData> Attributes { get; set; } = Enumerable.Empty<AttributeData>();
         }
     }
 }
