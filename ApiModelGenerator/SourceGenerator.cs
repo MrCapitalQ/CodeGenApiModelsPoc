@@ -34,7 +34,6 @@ namespace ApiModelGenerator
                     .GetMembers()
                     .Where(s => s.Kind == SymbolKind.Property)
                     .Cast<IPropertySymbol>()
-                    .Where(p => !p.GetAttributes().Any(x => "PocAttributes.PostIgnoreAttribute".Equals(x.AttributeClass?.ToDisplayString())))
                     .Select(p => new ClassPropertyInfo
                     {
                         Name = p.Name,
@@ -51,6 +50,9 @@ namespace ApiModelGenerator
             var propertiesSb = new StringBuilder();
             foreach (var property in classInfo.Properties)
             {
+                if (property.Attributes.Any(x => "PocAttributes.PostIgnoreAttribute".Equals(x.AttributeClass?.ToDisplayString())))
+                    continue;
+
                 if (!string.IsNullOrEmpty(property.Comments))
                 {
                     var doc = new XmlDocument();
