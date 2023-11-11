@@ -38,6 +38,8 @@ namespace ApiModelGenerator
                     {
                         Name = p.Name,
                         Type = p.Type.ToDisplayString(),
+                        NullableAnnotation = p.NullableAnnotation,
+                        IsReferenceType = p.Type.IsReferenceType,
                         Comments = p.GetDocumentationCommentXml(cancellationToken: cancellationToken),
                         Attributes = p.GetAttributes()
                     })
@@ -48,6 +50,7 @@ namespace ApiModelGenerator
         private static void Generate(SourceProductionContext context, ClassInfo classInfo)
         {
             var propertiesSb = new StringBuilder();
+            var isNullableEnabled = classInfo.Properties.Any(x => x.NullableAnnotation != NullableAnnotation.None && x.IsReferenceType);
             foreach (var property in classInfo.Properties)
             {
                 if (property.Attributes.Any(x => "PocAttributes.PostIgnoreAttribute".Equals(x.AttributeClass?.ToDisplayString())))
@@ -75,10 +78,19 @@ namespace ApiModelGenerator
                     propertiesSb.AppendLine(")]");
                 }
 
-                propertiesSb.AppendLine($$"""        public {{property.Type}} {{property.Name}} { get; set; }""");
+                propertiesSb.Append("""        public """);
+                propertiesSb.Append(property.Type);
+
+                if (isNullableEnabled && property.NullableAnnotation != NullableAnnotation.Annotated)
+                    propertiesSb.Append("?");
+
+                propertiesSb.Append(" ");
+                propertiesSb.Append(property.Name);
+                propertiesSb.AppendLine(" { get; set; }");
             }
 
             var classTemplate = $$"""
+                {{(isNullableEnabled ? "#nullable enable" : string.Empty)}}
                 namespace {{classInfo.Namespace}}
                 {
                     public class {{classInfo.Name}}Post
@@ -117,6 +129,8 @@ namespace ApiModelGenerator
             public string Type { get; set; } = string.Empty;
             public string? Comments { get; set; }
             public IEnumerable<AttributeData> Attributes { get; set; } = Enumerable.Empty<AttributeData>();
+            public NullableAnnotation NullableAnnotation { get; set; }
+            public bool IsReferenceType { get; set; }
         }
     }
 }

@@ -31,12 +31,15 @@ namespace CodeGenApiModelsPoc.Models
         /// 
         /// omg
         /// </summary>
-        public string MiddleName { get; set; } = string.Empty;
+        public string? MiddleName { get; set; } = string.Empty;
 
         /// <summary>
         /// Regular summary with no post specific verb summary.
         /// </summary>
+        [Required]
         public string LastName { get; set; } = string.Empty;
 
+        [Required]
+        public int Age { get; set; }
     }
 }
