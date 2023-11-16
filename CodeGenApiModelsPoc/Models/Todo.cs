@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 namespace CodeGenApiModelsPoc.Models
 {
     [ModelGeneration]
-    public class Todo
+    public record Todo
     {
         /// <summary>
         /// The ID of the to-do item.

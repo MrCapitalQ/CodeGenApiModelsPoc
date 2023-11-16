@@ -29,6 +29,7 @@ namespace ApiModelGenerator
             return new ClassInfo
             {
                 Name = typeSymbol.Name,
+                IsRecord = typeSymbol.IsRecord,
                 Namespace = typeSymbol.ContainingNamespace.ToDisplayString(),
                 Properties = typeSymbol
                     .GetMembers()
@@ -53,6 +54,9 @@ namespace ApiModelGenerator
             var isNullableEnabled = classInfo.Properties.Any(x => x.NullableAnnotation != NullableAnnotation.None && x.IsReferenceType);
             foreach (var property in classInfo.Properties)
             {
+                if (classInfo.IsRecord && property.Name == "EqualityContract")
+                    continue;
+
                 if (property.Attributes.Any(x => "PocAttributes.PostIgnoreAttribute".Equals(x.AttributeClass?.ToDisplayString())))
                     continue;
 
@@ -93,7 +97,7 @@ namespace ApiModelGenerator
                 {{(isNullableEnabled ? "#nullable enable" : string.Empty)}}
                 namespace {{classInfo.Namespace}}
                 {
-                    public class {{classInfo.Name}}Post
+                    public {{(classInfo.IsRecord ? "record" : "class")}} {{classInfo.Name}}Post
                     {
                 {{propertiesSb}}
                     }
@@ -119,6 +123,7 @@ namespace ApiModelGenerator
         private record ClassInfo
         {
             public string Name { get; set; } = string.Empty;
+            public bool IsRecord { get; set; }
             public string Namespace { get; set; } = string.Empty;
             public IEnumerable<ClassPropertyInfo> Properties { get; set; } = Enumerable.Empty<ClassPropertyInfo>();
         }
