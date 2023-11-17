@@ -112,11 +112,14 @@ namespace ApiModelGenerator
                 return;
 
             sb.AppendLine("        /// <summary>");
-            foreach (var line in node.InnerXml.TrimEnd().Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries))
+
+            var xmlDocs = $"    {node.InnerXml.Trim()}";
+            foreach (var line in xmlDocs.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries))
             {
                 sb.Append("        /// ");
                 sb.AppendLine(string.Concat(line.Skip(4)));
             }
+
             sb.AppendLine("        /// </summary>");
         }
 
