@@ -9,6 +9,8 @@ namespace ApiModelGenerator
     [Generator]
     public class SourceGenerator : IIncrementalGenerator
     {
+        private const string PostIgnoreAttributeName = "PocAttributes.PostIgnoreAttribute";
+
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
             var provider = context.SyntaxProvider.ForAttributeWithMetadataName("PocAttributes.ModelGenerationAttribute",
@@ -50,60 +52,94 @@ namespace ApiModelGenerator
 
         private static void Generate(SourceProductionContext context, ClassInfo classInfo)
         {
-            var propertiesSb = new StringBuilder();
+            var postPropertiesSb = new StringBuilder();
+            var putPropertiesSb = new StringBuilder();
             var isNullableEnabled = classInfo.Properties.Any(x => x.NullableAnnotation != NullableAnnotation.None && x.IsReferenceType);
             foreach (var property in classInfo.Properties)
             {
                 if (classInfo.IsRecord && property.Name == "EqualityContract")
                     continue;
 
-                if (property.Attributes.Any(x => "PocAttributes.PostIgnoreAttribute".Equals(x.AttributeClass?.ToDisplayString())))
-                    continue;
+                var isPostIgnored = property.Attributes.Any(x => PostIgnoreAttributeName.Equals(x.AttributeClass?.ToDisplayString()));
 
                 if (!string.IsNullOrEmpty(property.Comments))
                 {
                     var doc = new XmlDocument();
                     doc.LoadXml(property.Comments);
                     var defaultSummary = doc.GetElementsByTagName("summary").OfType<XmlNode>().FirstOrDefault();
-                    var postSummary = doc.GetElementsByTagName("post").OfType<XmlNode>().FirstOrDefault();
-                    AppendSummaryComment(propertiesSb, postSummary ?? defaultSummary);
+
+                    if (!isPostIgnored)
+                    {
+                        var postSummary = doc.GetElementsByTagName("post").OfType<XmlNode>().FirstOrDefault();
+                        AppendSummaryComment(postPropertiesSb, postSummary ?? defaultSummary);
+                    }
+
+                    var putSummary = doc.GetElementsByTagName("put").OfType<XmlNode>().FirstOrDefault();
+                    AppendSummaryComment(putPropertiesSb, putSummary ?? defaultSummary);
                 }
 
                 foreach (var attribute in property.Attributes)
                 {
-                    propertiesSb.Append($"        [{attribute.AttributeClass?.ToDisplayString()}(");
+                    if (!isPostIgnored)
+                        AppendAttribute(postPropertiesSb, attribute);
 
-                    var arguments = attribute.ConstructorArguments
-                        .Select(x => x.ToCSharpString())
-                        .Concat(attribute.NamedArguments
-                            .Select(x => $"{x.Key} = {x.Value.ToCSharpString()}"));
-                    propertiesSb.Append(string.Join(", ", arguments));
-
-                    propertiesSb.AppendLine(")]");
+                    AppendAttribute(putPropertiesSb, attribute);
                 }
 
-                propertiesSb.Append("""        public """);
-                propertiesSb.Append(property.Type);
+                if (!isPostIgnored)
+                    AppendProperty(postPropertiesSb, isNullableEnabled, property);
 
-                if (isNullableEnabled && property.NullableAnnotation != NullableAnnotation.Annotated)
-                    propertiesSb.Append("?");
-
-                propertiesSb.Append(" ");
-                propertiesSb.Append(property.Name);
-                propertiesSb.AppendLine(" { get; set; }");
+                AppendProperty(putPropertiesSb, isNullableEnabled, property);
             }
 
-            var classTemplate = $$"""
+            var fileTemplate = $$"""
                 {{(isNullableEnabled ? "#nullable enable" : string.Empty)}}
                 namespace {{classInfo.Namespace}}
                 {
                     public {{(classInfo.IsRecord ? "record" : "class")}} {{classInfo.Name}}Post
                     {
-                {{propertiesSb}}
+                {{postPropertiesSb}}
+                    }
+                
+                    public {{(classInfo.IsRecord ? "record" : "class")}} {{classInfo.Name}}Put
+                    {
+                {{putPropertiesSb}}
                     }
                 }
                 """;
-            context.AddSource($"{classInfo.Name}_ApiModels.g.cs", classTemplate);
+            context.AddSource($"{classInfo.Name}_ApiModels.g.cs", fileTemplate);
+        }
+
+        private static void AppendProperty(StringBuilder sb, bool isNullableEnabled, ClassPropertyInfo property)
+        {
+            sb.Append("        public ");
+            sb.Append(property.Type);
+
+            if (isNullableEnabled && property.NullableAnnotation != NullableAnnotation.Annotated)
+                sb.Append("?");
+
+            sb.Append(" ");
+            sb.Append(property.Name);
+            sb.AppendLine(" { get; set; }");
+        }
+
+        private static void AppendAttribute(StringBuilder sb, AttributeData attribute)
+        {
+            if (attribute.AttributeClass is null
+                || PostIgnoreAttributeName.Equals(attribute.AttributeClass.ToDisplayString()))
+                return;
+
+            sb.Append("        [");
+            sb.Append(attribute.AttributeClass.ToDisplayString());
+            sb.Append("(");
+
+            var arguments = attribute.ConstructorArguments
+                .Select(x => x.ToCSharpString())
+                .Concat(attribute.NamedArguments
+                    .Select(x => $"{x.Key} = {x.Value.ToCSharpString()}"));
+            sb.Append(string.Join(", ", arguments));
+
+            sb.AppendLine(")]");
         }
 
         private static void AppendSummaryComment(StringBuilder sb, XmlNode? node)
