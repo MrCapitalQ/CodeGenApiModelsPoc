@@ -3,6 +3,6 @@
 namespace PocAttributes
 {
     [AttributeUsage(AttributeTargets.Property)]
-    public class PostIgnoreAttribute : Attribute
+    public class PutIgnoreAttribute : Attribute
     { }
 }

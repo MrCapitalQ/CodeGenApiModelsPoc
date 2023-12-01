@@ -10,6 +10,7 @@ namespace ApiModelGenerator
     public class SourceGenerator : IIncrementalGenerator
     {
         private const string PostIgnoreAttributeName = "PocAttributes.PostIgnoreAttribute";
+        private const string PutIgnoreAttributeName = "PocAttributes.PutIgnoreAttribute";
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
@@ -61,6 +62,7 @@ namespace ApiModelGenerator
                     continue;
 
                 var isPostIgnored = property.Attributes.Any(x => PostIgnoreAttributeName.Equals(x.AttributeClass?.ToDisplayString()));
+                var isPutIgnored = property.Attributes.Any(x => PutIgnoreAttributeName.Equals(x.AttributeClass?.ToDisplayString()));
 
                 if (!string.IsNullOrEmpty(property.Comments))
                 {
@@ -74,8 +76,11 @@ namespace ApiModelGenerator
                         AppendSummaryComment(postPropertiesSb, postSummary ?? defaultSummary);
                     }
 
-                    var putSummary = doc.GetElementsByTagName("put").OfType<XmlNode>().FirstOrDefault();
-                    AppendSummaryComment(putPropertiesSb, putSummary ?? defaultSummary);
+                    if (!isPutIgnored)
+                    {
+                        var putSummary = doc.GetElementsByTagName("put").OfType<XmlNode>().FirstOrDefault();
+                        AppendSummaryComment(putPropertiesSb, putSummary ?? defaultSummary);
+                    }
                 }
 
                 foreach (var attribute in property.Attributes)
@@ -83,13 +88,15 @@ namespace ApiModelGenerator
                     if (!isPostIgnored)
                         AppendAttribute(postPropertiesSb, attribute);
 
-                    AppendAttribute(putPropertiesSb, attribute);
+                    if (!isPutIgnored)
+                        AppendAttribute(putPropertiesSb, attribute);
                 }
 
                 if (!isPostIgnored)
                     AppendProperty(postPropertiesSb, isNullableEnabled, property);
 
-                AppendProperty(putPropertiesSb, isNullableEnabled, property);
+                if (!isPutIgnored)
+                    AppendProperty(putPropertiesSb, isNullableEnabled, property);
             }
 
             var fileTemplate = $$"""
@@ -126,7 +133,8 @@ namespace ApiModelGenerator
         private static void AppendAttribute(StringBuilder sb, AttributeData attribute)
         {
             if (attribute.AttributeClass is null
-                || PostIgnoreAttributeName.Equals(attribute.AttributeClass.ToDisplayString()))
+                || PostIgnoreAttributeName.Equals(attribute.AttributeClass.ToDisplayString())
+                || PutIgnoreAttributeName.Equals(attribute.AttributeClass.ToDisplayString()))
                 return;
 
             sb.Append("        [");
