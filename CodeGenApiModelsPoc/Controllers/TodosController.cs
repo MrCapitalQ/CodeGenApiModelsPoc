@@ -45,5 +45,18 @@ namespace CodeGenApiModelsPoc.Controllers
         {
             throw new NotImplementedException();
         }
+
+        /// <summary>
+        /// Updates a to-do item.
+        /// </summary>
+        /// <param name="id">The ID of the to-do item to update.</param>
+        /// <param name="put">The updated to-do item.</param>
+        [HttpPut("{id}", Name = nameof(UpdateTodo))]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult UpdateTodo(int id, TodoPut put)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
