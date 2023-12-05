@@ -141,11 +141,24 @@ namespace ApiModelGenerator
             sb.Append(attribute.AttributeClass.ToDisplayString());
             sb.Append("(");
 
-            var arguments = attribute.ConstructorArguments
-                .Select(x => x.ToCSharpString())
-                .Concat(attribute.NamedArguments
-                    .Select(x => $"{x.Key} = {x.Value.ToCSharpString()}"));
-            sb.Append(string.Join(", ", arguments));
+            var argCount = 0;
+            foreach (var arg in attribute.ConstructorArguments)
+            {
+                if (argCount > 0)
+                    sb.Append(", ");
+                sb.Append(arg.ToCSharpString());
+                argCount++;
+            }
+
+            foreach (var arg in attribute.NamedArguments)
+            {
+                if (argCount > 0)
+                    sb.Append(", ");
+                sb.Append(arg.Key);
+                sb.Append(" = ");
+                sb.Append(arg.Value.ToCSharpString());
+                argCount++;
+            }
 
             sb.AppendLine(")]");
         }
