@@ -53,9 +53,12 @@ namespace ApiModelGenerator
 
         private static void Generate(SourceProductionContext context, ClassInfo classInfo)
         {
+            var resourcePropertiesSb = new StringBuilder();
             var postPropertiesSb = new StringBuilder();
             var putPropertiesSb = new StringBuilder();
+
             var isNullableEnabled = classInfo.Properties.Any(x => x.NullableAnnotation != NullableAnnotation.None && x.IsReferenceType);
+
             foreach (var property in classInfo.Properties)
             {
                 if (classInfo.IsRecord && property.Name == "EqualityContract")
@@ -68,7 +71,9 @@ namespace ApiModelGenerator
                 {
                     var doc = new XmlDocument();
                     doc.LoadXml(property.Comments);
+
                     var defaultSummary = doc.GetElementsByTagName("summary").OfType<XmlNode>().FirstOrDefault();
+                    AppendSummaryComment(resourcePropertiesSb, defaultSummary);
 
                     if (!isPostIgnored)
                     {
@@ -92,17 +97,24 @@ namespace ApiModelGenerator
                         AppendAttribute(putPropertiesSb, attribute);
                 }
 
+                AppendResourceModelProperty(resourcePropertiesSb, property, isNullableEnabled);
+
                 if (!isPostIgnored)
-                    AppendProperty(postPropertiesSb, isNullableEnabled, property);
+                    AppendRequestModelProperty(postPropertiesSb, property, isNullableEnabled);
 
                 if (!isPutIgnored)
-                    AppendProperty(putPropertiesSb, isNullableEnabled, property);
+                    AppendRequestModelProperty(putPropertiesSb, property, isNullableEnabled);
             }
 
             var fileTemplate = $$"""
                 {{(isNullableEnabled ? "#nullable enable" : string.Empty)}}
                 namespace {{classInfo.Namespace}}
                 {
+                    public {{(classInfo.IsRecord ? "record" : "class")}} {{classInfo.Name}}Resource
+                    {
+                {{resourcePropertiesSb}}
+                    }
+
                     public {{(classInfo.IsRecord ? "record" : "class")}} {{classInfo.Name}}Post
                     {
                 {{postPropertiesSb}}
@@ -117,7 +129,18 @@ namespace ApiModelGenerator
             context.AddSource($"{classInfo.Name}_ApiModels.g.cs", fileTemplate);
         }
 
-        private static void AppendProperty(StringBuilder sb, bool isNullableEnabled, ClassPropertyInfo property)
+        private static void AppendResourceModelProperty(StringBuilder sb, ClassPropertyInfo property, bool isNullableEnabled)
+        {
+            sb.Append("        public ");
+            if (isNullableEnabled && property.NullableAnnotation != NullableAnnotation.Annotated)
+                sb.Append("required ");
+            sb.Append(property.Type);
+            sb.Append(" ");
+            sb.Append(property.Name);
+            sb.AppendLine(" { get; set; }");
+        }
+
+        private static void AppendRequestModelProperty(StringBuilder sb, ClassPropertyInfo property, bool isNullableEnabled)
         {
             sb.Append("        public ");
             sb.Append(property.Type);
