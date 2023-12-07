@@ -19,7 +19,7 @@ namespace CodeGenApiModelsPoc.Controllers
         /// </summary>
         [HttpGet(Name = nameof(GetTodos))]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public ActionResult<IEnumerable<Todo>> GetTodos()
+        public ActionResult<IEnumerable<TodoResource>> GetTodos()
         {
             throw new NotImplementedException();
         }
@@ -29,7 +29,7 @@ namespace CodeGenApiModelsPoc.Controllers
         /// </summary>
         [HttpGet("{id}", Name = nameof(GetTodo))]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public ActionResult<Todo> GetTodo(int id)
+        public ActionResult<TodoResource> GetTodo(int id)
         {
             throw new NotImplementedException();
         }
@@ -41,7 +41,7 @@ namespace CodeGenApiModelsPoc.Controllers
         [HttpPost(Name = nameof(CreateTodo))]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public ActionResult<Todo> CreateTodo(TodoPost post)
+        public ActionResult<TodoResource> CreateTodo(TodoPost post)
         {
             throw new NotImplementedException();
         }
