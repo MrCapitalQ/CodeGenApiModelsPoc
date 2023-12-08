@@ -47,7 +47,8 @@ namespace ApiModelGenerator
                         Comments = p.GetDocumentationCommentXml(cancellationToken: cancellationToken),
                         Attributes = p.GetAttributes()
                     })
-                    .ToList()
+                    .ToList(),
+                LanguageVersion = ((CSharpCompilation)context.SemanticModel.Compilation).LanguageVersion
             };
         }
 
@@ -97,13 +98,13 @@ namespace ApiModelGenerator
                         AppendAttribute(putPropertiesSb, attribute);
                 }
 
-                AppendResourceModelProperty(resourcePropertiesSb, property, isNullableEnabled);
+                AppendResourceModelProperty(resourcePropertiesSb, property, classInfo.LanguageVersion, isNullableEnabled);
 
                 if (!isPostIgnored)
-                    AppendRequestModelProperty(postPropertiesSb, property, isNullableEnabled);
+                    AppendRequestModelProperty(postPropertiesSb, property, classInfo.LanguageVersion, isNullableEnabled);
 
                 if (!isPutIgnored)
-                    AppendRequestModelProperty(putPropertiesSb, property, isNullableEnabled);
+                    AppendRequestModelProperty(putPropertiesSb, property, classInfo.LanguageVersion, isNullableEnabled);
             }
 
             var fileTemplate = $$"""
@@ -129,23 +130,25 @@ namespace ApiModelGenerator
             context.AddSource($"{classInfo.Name}_ApiModels.g.cs", fileTemplate);
         }
 
-        private static void AppendResourceModelProperty(StringBuilder sb, ClassPropertyInfo property, bool isNullableEnabled)
+        private static void AppendResourceModelProperty(StringBuilder sb, ClassPropertyInfo property, LanguageVersion languageVersion, bool isNullableEnabled)
         {
             sb.Append("        public ");
-            if (isNullableEnabled && property.NullableAnnotation != NullableAnnotation.Annotated)
+
+            if (languageVersion >= LanguageVersion.CSharp11 && isNullableEnabled && property.NullableAnnotation != NullableAnnotation.Annotated)
                 sb.Append("required ");
+
             sb.Append(property.Type);
             sb.Append(" ");
             sb.Append(property.Name);
             sb.AppendLine(" { get; set; }");
         }
 
-        private static void AppendRequestModelProperty(StringBuilder sb, ClassPropertyInfo property, bool isNullableEnabled)
+        private static void AppendRequestModelProperty(StringBuilder sb, ClassPropertyInfo property, LanguageVersion languageVersion, bool isNullableEnabled)
         {
             sb.Append("        public ");
             sb.Append(property.Type);
 
-            if (isNullableEnabled && property.NullableAnnotation != NullableAnnotation.Annotated)
+            if (languageVersion >= LanguageVersion.CSharp8 && isNullableEnabled && property.NullableAnnotation != NullableAnnotation.Annotated)
                 sb.Append("?");
 
             sb.Append(" ");
@@ -209,6 +212,7 @@ namespace ApiModelGenerator
             public bool IsRecord { get; set; }
             public string Namespace { get; set; } = string.Empty;
             public IEnumerable<ClassPropertyInfo> Properties { get; set; } = Enumerable.Empty<ClassPropertyInfo>();
+            public LanguageVersion LanguageVersion { get; set; }
         }
 
         private record ClassPropertyInfo
